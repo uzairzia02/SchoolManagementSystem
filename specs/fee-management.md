@@ -1,156 +1,530 @@
 # Fee Management Module Specification
 
 ## 1. Purpose
-Manage student fee structures, invoicing, payment processing, discounts, and fine calculation.
+Manage complete student fee lifecycle including fee structures, invoices, installments, payments, concessions, scholarships, fines, receipts, refunds, financial reporting, and payment notifications.
 
-## 2. Features
-- Fee structure configuration (types, amounts)
-- Invoice generation and distribution
-- Payment recording (online/offline)
-- Discount and scholarship application
-- Fine calculation for late payments
-- Receipt generation (PDF/email)
-- Fee status tracking
-- Payment reminders via notifications
-- Financial reporting
+---
 
-## 3. User Flows
-### Accountant/Admin
-1. Define fee structure for academic year
-2. Generate invoices for students
-3. Record payment transactions
-4. Apply discounts/scholarships
-5. Calculate and record fines
-6. Generate financial reports
-7. Send payment reminders
+# 2. Features
 
-### Parent/Student
-1. View fee status & due dates
-2. Make online payment
-3. Download payment receipts
-4. View payment history
+- Fee Structure Configuration
+- Academic Session-wise Fee Plans
+- Class-wise Fee Structure
+- Student-specific Fee Adjustments
+- Monthly / Quarterly / Annual Billing
+- Admission Fee
+- Registration Fee
+- Security Deposit
+- Monthly Tuition Fee
+- Transport Fee
+- Examination Fee
+- Library Fee
+- Computer Lab Fee
+- Science Lab Fee
+- Sports Fee
+- Hostel Fee (Future)
+- Custom Fee Types
+- Invoice Generation
+- Installment Plans
+- Online & Offline Payments
+- Partial Payments
+- Scholarships
+- Discounts & Concessions
+- Late Fee / Fine Calculation
+- Automatic Receipt Generation
+- Payment Reminders
+- Refund Management
+- Outstanding Balance Tracking
+- Financial Reports
+- Audit Logs
 
-## 4. API Endpoints (v1)
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| POST | `/api/v1/fees/structures` | ✅ (Accountant/Admin) | Create fee structure |
-| GET | `/api/v1/fees/structures` | ✅ | List fee structures |
-| POST | `/api/v1/fees/invoices` | ✅ (Accountant) | Generate invoices |
-| GET | `/api/v1/fees/invoices` | ✅ | List invoices |
-| POST | `/api/v1/fees/payments` | ✅ (Parent) | Record payment |
-| GET | `/api/v1/fees/status/:studentId` | ✅ (Parent) | Fee status |
-| POST | `/api/v1/fees/discounts` | ✅ (Admin) | Apply discount |
-| POST | `/api/v1/fees/fines/calculate` | ✅ (System) | Calculate fines |
-| GET | `/api/v1/fees/receipt/:paymentId` | ✅ (Parent) | Download receipt |
-| GET | `/api/v1/fees/reports` | ✅ (Accountant) | Financial reports |
+---
 
-## 5. Data Model
+# 3. User Flows
+
+## Accountant / Finance Officer
+
+1. Create Academic Session
+2. Configure Fee Structure
+3. Generate Monthly Invoices
+4. Apply Discounts / Scholarships
+5. Record Payments
+6. Generate Receipts
+7. View Outstanding Dues
+8. Generate Reports
+
+---
+
+## Parent
+
+1. Login
+2. View Child Fee Details
+3. View Pending Invoice
+4. Pay Online / Offline
+5. Download Receipt
+6. View Payment History
+
+---
+
+## Student
+
+1. View Fee Status
+2. Download Receipts
+3. View Payment History
+
+---
+
+## Principal
+
+1. View Collection Reports
+2. View Outstanding Amount
+3. View Fee Defaulters
+4. View Scholarship Reports
+
+---
+
+# 4. API Endpoints (v1)
+
+| Method | Endpoint | Description |
+|----------|-----------------------------|----------------------------|
+| POST | /api/v1/fees/structures | Create Fee Structure |
+| GET | /api/v1/fees/structures | Get Fee Structures |
+| PUT | /api/v1/fees/structures/:id | Update Fee Structure |
+| DELETE | /api/v1/fees/structures/:id | Delete Fee Structure |
+
+| POST | /api/v1/fees/invoices | Generate Invoice |
+| GET | /api/v1/fees/invoices | List Invoices |
+| GET | /api/v1/fees/invoices/:id | Invoice Details |
+
+| POST | /api/v1/fees/payments | Record Payment |
+| GET | /api/v1/fees/payments | Payment History |
+
+| POST | /api/v1/fees/refund | Process Refund |
+
+| POST | /api/v1/fees/discounts | Apply Discount |
+| POST | /api/v1/fees/concessions | Apply Concession |
+
+| POST | /api/v1/fees/fines/calculate | Calculate Fine |
+
+| GET | /api/v1/fees/reports | Finance Reports |
+
+| GET | /api/v1/fees/receipt/:paymentId | Download Receipt |
+
+---
+
+# 5. Database Models
+
+## FeeStructure
+
 ```prisma
 model FeeStructure {
-  id              String   @id @default(uuid())
-  schoolId        String
-  feeType         FeeType
-  amount          Decimal
-  dueDay          Int      // Day of month
-  isRecurring     Boolean  // Monthly/annual
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  @@index([schoolId, feeType])
-}
+  id               String @id @default(uuid())
 
-model Invoice {
-  id              String   @id @default(uuid())
-  studentId       String
-  feeStructureId  String
-  amountDue       Decimal
-  amountPaid      Decimal  @default(0)
-  dueDate         DateTime
-  status          InvoiceStatus
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  @@index([studentId])
-  @@index([dueDate])
-}
+  schoolId         String
+  academicSessionId String
 
-model Payment {
-  id              String   @id @default(uuid())
-  invoiceId       String
-  amount          Decimal
-  paymentMethod   String
-  payerId         String   // Parent or student ID
-  transactionRef  String
-  receiptPath     String?  // PDF path
-  paidAt          DateTime @default(now())
-  schoolId        String
-  
-  @@index([invoiceId])
-  @@index([schoolId, paidAt])
-}
+  classId          String?
 
-model Discount {
-  id              String   @id @default(uuid())
-  studentId       String
-  invoiceId       String?
-  discountType    String
-  amount          Decimal
-  reason          String
-  appliedAt       DateTime @default(now())
-  
-  @@index([studentId])
-}
+  feeType          FeeType
 
-enum FeeType {
-  ADMISSION_FEE
-  MONTHLY_FEE
-  ANNUAL_FEE
-  TRANSPORT_FEE
-  EXAM_FEE
-  OTHER
-}
+  title            String
 
-enum InvoiceStatus {
-  PENDING
-  PARTIAL
-  PAID
-  OVERDUE
-  CANCELLED
+  amount           Decimal
+
+  dueDay           Int
+
+  billingCycle     BillingCycle
+
+  isRecurring      Boolean
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  deletedAt        DateTime?
+
+  @@index([schoolId])
 }
 ```
 
-## 6. Validation Rules
-- Fee structure amount must be > 0
-- Due date cannot be past for new invoices
-- Payment amount cannot exceed amount due
-- Discount percentage capped at 100%
-- Fine calculation occurs only after due date
+---
 
-## 7. Business Logic Rules
-- Payment reminders sent 7 days before due, then every 3 days after
-- Fine calculation: (days overdue * daily_rate) capped at 10% of fee
-- Scholarship discounts auto-applied based on criteria
-- Receipt generated automatically on successful payment
-- Status transitions: PENDING → PARTIAL → PAID | PENDING → OVERDUE
+## Invoice
 
-## 8. Payment Processing
-- Integration with payment gateway (Stripe/Paystack)
-- Webhook endpoint for payment confirmation
-- Handle failed payments with retry logic
-- Support for partial payments
+```prisma
+model Invoice {
 
-## 9. Reporting
-- Daily collection summary
-- Outstanding balances per class
-- Discount/scholarship utilization
-- Fine revenue report
+  id String @id @default(uuid())
 
-## 10. Permissions
-| Role | Configure Fees | Generate Invoices | Record Payment | View Reports |
-|------|----------------|-------------------|--------------|-------------|
-| Super Admin | ✅ | ✅ | ✅ | ✅ |
-| Principal | ✅ | ✅ | ✅ | ✅ |
-| Accountant | ✅ | ✅ | ✅ | ✅ |
-| Parent | ❌ | ❌ | ✅ (own child) | ❌ |
-| Student | ❌ | ❌ | ✅ (self) | ❌ (own only) |
-| Teacher | ❌ | ❌ | ❌ | ❌ |
+  schoolId String
+
+  studentId String
+
+  invoiceNumber String @unique
+
+  totalAmount Decimal
+
+  paidAmount Decimal @default(0)
+
+  remainingAmount Decimal
+
+  fine Decimal @default(0)
+
+  discount Decimal @default(0)
+
+  dueDate DateTime
+
+  status InvoiceStatus
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+}
+```
+
+---
+
+## Payment
+
+```prisma
+model Payment {
+
+  id String @id @default(uuid())
+
+  invoiceId String
+
+  amount Decimal
+
+  paymentMethod PaymentMethod
+
+  transactionReference String?
+
+  paymentStatus PaymentStatus
+
+  paidBy String
+
+  receiptUrl String?
+
+  paidAt DateTime @default(now())
+
+}
+```
+
+---
+
+## Discount
+
+```prisma
+model Discount {
+
+ id String @id @default(uuid())
+
+ studentId String
+
+ invoiceId String?
+
+ type DiscountType
+
+ amount Decimal
+
+ percentage Decimal?
+
+ reason String
+
+ approvedBy String
+
+}
+```
+
+---
+
+## Refund
+
+```prisma
+model Refund{
+
+ id String @id @default(uuid())
+
+ paymentId String
+
+ amount Decimal
+
+ reason String
+
+ status RefundStatus
+
+ approvedBy String?
+
+ refundedAt DateTime?
+
+}
+```
+
+---
+
+# 6. Enums
+
+## FeeType
+
+```
+ADMISSION
+
+REGISTRATION
+
+MONTHLY
+
+ANNUAL
+
+TRANSPORT
+
+EXAM
+
+LIBRARY
+
+COMPUTER_LAB
+
+SCIENCE_LAB
+
+SPORTS
+
+HOSTEL
+
+CUSTOM
+```
+
+---
+
+## BillingCycle
+
+```
+MONTHLY
+
+QUARTERLY
+
+HALF_YEARLY
+
+YEARLY
+
+ONE_TIME
+```
+
+---
+
+## PaymentMethod
+
+```
+CASH
+
+BANK_TRANSFER
+
+CHEQUE
+
+CARD
+
+JAZZCASH
+
+EASYPAISA
+
+STRIPE
+
+PAYPAL
+```
+
+---
+
+## InvoiceStatus
+
+```
+PENDING
+
+PARTIAL
+
+PAID
+
+OVERDUE
+
+CANCELLED
+
+REFUNDED
+```
+
+---
+
+## PaymentStatus
+
+```
+SUCCESS
+
+FAILED
+
+PENDING
+
+REFUNDED
+```
+
+---
+
+# 7. Validation Rules
+
+- Fee amount must be greater than zero.
+- Invoice number must be unique.
+- Due date cannot be before invoice date.
+- Payment cannot exceed remaining balance.
+- Discount cannot exceed invoice amount.
+- Concession cannot exceed 100%.
+- Refund amount cannot exceed paid amount.
+- Payment reference must be unique.
+- Duplicate invoice generation is prohibited.
+
+---
+
+# 8. Business Rules
+
+- Monthly invoices generated automatically.
+- Fine starts after due date.
+- Daily fine configurable per school.
+- Maximum fine configurable.
+- Scholarship auto-applied.
+- Sibling concession supported.
+- Employee child concession supported.
+- Receipt generated automatically after payment.
+- Invoice status updates automatically.
+- Outstanding balance recalculated after every payment.
+- Parent receives reminder:
+  - 7 days before due date
+  - On due date
+  - Every 3 days after overdue
+- Every financial transaction creates Audit Log entry.
+
+---
+
+# 9. Payment Processing
+
+Supported Methods
+
+- Cash
+- Bank Transfer
+- Cheque
+- JazzCash
+- EasyPaisa
+- Stripe
+- PayPal
+
+Future
+
+- Apple Pay
+- Google Pay
+
+Requirements
+
+- Secure webhook verification
+- Retry failed payments
+- Partial payment support
+- Duplicate transaction prevention
+
+---
+
+# 10. Reports
+
+Financial Reports
+
+- Daily Collection
+- Weekly Collection
+- Monthly Collection
+- Annual Collection
+- Outstanding Balance
+- Fee Defaulters
+- Discount Report
+- Scholarship Report
+- Fine Collection
+- Refund Report
+- Payment Method Summary
+- Revenue Dashboard
+
+Export Formats
+
+- PDF
+- Excel
+- CSV
+
+---
+
+# 11. Dashboard KPIs
+
+Accountant Dashboard
+
+- Total Collection
+- Pending Collection
+- Overdue Amount
+- Today's Collection
+- Monthly Revenue
+- Fine Collected
+- Scholarships Given
+- Refund Amount
+
+Principal Dashboard
+
+- Fee Collection %
+- Outstanding Amount
+- Top Defaulter Classes
+- Revenue Trend
+
+---
+
+# 12. Notifications
+
+Automatic Notifications
+
+- Invoice Generated
+- Payment Received
+- Payment Failed
+- Receipt Generated
+- Fee Reminder
+- Overdue Reminder
+- Refund Approved
+
+Channels
+
+- In-App
+- Email
+- WhatsApp (Future)
+
+---
+
+# 13. Security
+
+- RBAC enforced.
+- Parents can only access their children's invoices.
+- Students can only access their own invoices.
+- Every transaction stored in Audit Log.
+- Sensitive payment information encrypted.
+- PCI-compliant payment gateway integration.
+- Transaction IDs are immutable.
+
+---
+
+# 14. Permissions
+
+| Role | Configure Fee | Generate Invoice | Record Payment | Refund | Reports |
+|------|---------------|------------------|---------------|---------|----------|
+| Super Admin | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Principal | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Accountant | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Parent | ❌ | ❌ | ✅ (Own Child) | ❌ | ❌ |
+| Student | ❌ | ❌ | ✅ (Self) | ❌ | ❌ |
+| Teacher | ❌ | ❌ | ❌ | ❌ | ❌ |
+
+---
+
+# 15. Future Enhancements
+
+- Installment Plans
+- Dynamic Fee Rules
+- Family Discount Engine
+- Multiple Children Combined Invoice
+- AI-based Fee Default Prediction
+- Multi-Currency Support
+- Multi-Campus Finance
+- GST/VAT Support
+- Accounting Ledger Integration
+- QuickBooks Integration
+- Xero Integration
